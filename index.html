@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>烟台理工学院校园导航系统 </title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .left-panel {
+            flex: 1;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .right-panel {
+            flex: 2;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        h3 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        #mapCanvas {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>烟台理工学院校园导航系统</h1><h3>作者：高维薇 姜之豪 王禹涵</h3>
+    <div class="container">
+        <div class="left-panel">
+            <div class="form-group">
+                <label for="start">起点：</label>
+                <select id="start"></select>
+            </div>
+            <div class="form-group">
+                <label for="end">终点：</label>
+                <select id="end"></select>
+            </div>
+            <button onclick="findPath()">查找最短路径</button>
+            <div id="result"></div>
+        </div>
+        <div class="right-panel">
+            <canvas id="mapCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const buildings = [
+            {name: "二教", x: 200, y: 150},
+            {name: "综合楼", x: 400, y: 150},
+            {name: "一教", x: 600, y: 150},
+            {name: "树林", x: 250, y: 250},
+            {name: "琴心湖", x: 400, y: 250},
+            {name: "篮球场", x: 550, y: 250},
+            {name: "商业楼", x: 550, y: 350},
+            {name: "七号宿舍", x: 250, y: 350},
+            {name: "三餐", x: 400, y: 350},
+            {name: "四号宿舍", x: 250, y: 450},
+            {name: "十号宿舍", x: 400, y: 450},
+            {name: "一二餐厅", x: 550, y: 450}
+        ];
+
+        const graph = {
+            "二教": {
+                "综合楼": 150,
+                "一教": 150,
+                "树林": 300,
+                "琴心湖": 450,
+                "篮球场": 600,
+                "七号宿舍": 750,
+                "三餐": 900,
+                "商业楼": 900,
+                "四号宿舍": 1500,
+                "十号宿舍": 1650,
+                "一二餐厅": 1000
+            },
+            "综合楼": {
+                "二教": 150,
+                "一教": 150,
+                "树林": 150,
+                "琴心湖": 300,
+                "篮球场": 450,
+                "七号宿舍": 600,
+                "三餐": 600,
+                "商业楼": 300,
+                "四号宿舍": 900,
+                "十号宿舍": 1050,
+                "一二餐厅": 800
+            },
+            "一教": {
+                "二教": 150,
+                "综合楼": 150,
+                "树林": 300,
+                "琴心湖": 450,
+                "篮球场": 600,
+                "七号宿舍": 750,
+                "三餐": 900,
+                "商业楼": 900,
+                "四号宿舍": 1500,
+                "十号宿舍": 1650,
+                "一二餐厅": 1000
+            },
+            "树林": {
+                "二教": 300,
+                "综合楼": 150,
+                "一教": 300,
+                "琴心湖": 50,
+                "篮球场": 90,
+                "七号宿舍": 250,
+                "三餐": 300,
+                "商业楼": 350,
+                "四号宿舍": 550,
+                "十号宿舍": 600,
+                "一二餐厅": 450
+            },
+            "琴心湖": {
+                "二教": 450,
+                "综合楼": 300,
+                "一教": 450,
+                "树林": 50,
+                "篮球场": 200,
+                "七号宿舍": 250,
+                "三餐": 300,
+                "商业楼": 350,
+                "四号宿舍": 550,
+                "十号宿舍": 600,
+                "一二餐厅": 450
+            },
+            "篮球场": {
+                "二教": 600,
+                "综合楼": 450,
+                "一教": 600,
+                "树林": 90,
+                "琴心湖": 200,
+                "七号宿舍": 250,
+                "三餐": 300,
+                "商业楼": 350,
+                "四号宿舍": 550,
+                "十号宿舍": 600,
+                "一二餐厅": 450
+            },
+            "商业楼": {
+                "二教": 900,
+                "综合楼": 300,
+                "一教": 900,
+                "树林": 350,
+                "琴心湖": 350,
+                "篮球场": 350,
+                "七号宿舍": 200,
+                "三餐": 100,
+                "四号宿舍": 300,
+                "十号宿舍": 350,
+                "一二餐厅": 400
+            },
+            "七号宿舍": {
+                "二教": 750,
+                "综合楼": 600,
+                "一教": 750,
+                "树林": 250,
+                "琴心湖": 250,
+                "篮球场": 250,
+                "商业楼": 100,
+                "三餐": 100,
+                "四号宿舍": 300,
+                "十号宿舍": 350,
+                "一二餐厅": 400
+            },
+            "三餐": {
+                "二教": 900,
+                "综合楼": 600,
+                "一教": 900,
+                "树林": 300,
+                "琴心湖": 300,
+                "篮球场": 300,
+                "商业楼": 100,
+                "七号宿舍": 100,
+                "四号宿舍": 300,
+                "十号宿舍": 350,
+                "一二餐厅": 400
+            },
+            "四号宿舍": {
+                "二教": 1500,
+                "综合楼": 900,
+                "一教": 1500,
+                "树林": 550,
+                "琴心湖": 550,
+                "篮球场": 550,
+                "商业楼": 300,
+                "七号宿舍": 300,
+                "三餐": 300,
+                "十号宿舍": 350,
+                "一二餐厅": 400
+            },
+            "十号宿舍": {
+                "二教": 1650,
+                "综合楼": 1050,
+                "一教": 1650,
+                "树林": 600,
+                "琴心湖": 600,
+                "篮球场": 600,
+                "商业楼": 350,
+                "七号宿舍": 350,
+                "三餐": 350,
+                "四号宿舍": 350,
+                "一二餐厅": 400
+            },
+            "一二餐厅": {
+                "二教": 1000,
+                "综合楼": 800,
+                "一教": 1000,
+                "树林": 450,
+                "琴心湖": 450,
+                "篮球场": 450,
+                "商业楼": 400,
+                "七号宿舍": 400,
+                "三餐": 400,
+                "四号宿舍": 400,
+                "十号宿舍": 400
+            }
+        };
+
+        const canvas = document.getElementById('mapCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 设置画布大小
+        canvas.width = 1000;
+        canvas.height = 600;
+
+        function drawMap() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制建筑物
+            buildings.forEach(building => {
+                ctx.beginPath();
+                ctx.arc(building.x, building.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#4CAF50';
+                ctx.fill();
+                
+                ctx.font = '12px Arial';
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'center';
+                ctx.fillText(building.name, building.x, building.y - 10);
+            });
+        }
+
+        function initSelects() {
+            const start = document.getElementById('start');
+            const end = document.getElementById('end');
+            
+            buildings.forEach(building => {
+                start.add(new Option(building.name, building.name));
+                end.add(new Option(building.name, building.name));
+            });
+        }
+
+        function dijkstra(start, end) {
+            let distances = {};
+            let visited = new Set();
+            let previous = {};
+            let queue = [];
+
+            for (let building of Object.keys(graph)) {
+                distances[building] = Infinity;
+                previous[building] = null;
+                queue.push(building);
+            }
+            distances[start] = 0;
+
+            while (queue.length > 0) {
+                queue.sort((a, b) => distances[a] - distances[b]);
+                let current = queue.shift();
+                visited.add(current);
+
+                if (current === end) {
+                    break;
+                }
+
+                for (let neighbor in graph[current]) {
+                    if (!visited.has(neighbor)) {
+                        let newDist = distances[current] + graph[current][neighbor];
+                        if (newDist < distances[neighbor]) {
+                            distances[neighbor] = newDist;
+                            previous[neighbor] = current;
+                        }
+                    }
+                }
+            }
+
+            let path = [];
+            let current = end;
+            while (current) {
+                path.unshift(current);
+                current = previous[current];
+            }
+
+            return { path, distance: distances[end] };
+        }
+
+        function findPath() {
+            const start = document.getElementById('start').value;
+            const end = document.getElementById('end').value;
+
+            if (start === end) {
+                document.getElementById('result').innerHTML = '起点和终点相同，无需导航！';
+                return;
+            }
+
+            const { path, distance } = dijkstra(start, end);
+            document.getElementById('result').innerHTML = `
+                <h3>最短路径：</h3>
+                <p>${path.join(' → ')}</p>
+                <h3>总距离：</h3>
+                <p>${distance}米</p>
+            `;
+
+            // 重绘地图并标注路径
+            drawMap();
+            drawPath(start, end);
+        }
+
+        function drawPath(start, end) {
+            const startBuilding = buildings.find(b => b.name === start);
+            const endBuilding = buildings.find(b => b.name === end);
+            
+            // 获取最短路径
+            const { path } = dijkstra(start, end);
+
+            // 绘制路径
+            ctx.beginPath();
+            ctx.moveTo(startBuilding.x, startBuilding.y);
+
+            // 遍历路径中的每个建筑物，绘制连接线
+            path.forEach(buildingName => {
+                const building = buildings.find(b => b.name === buildingName);
+                ctx.lineTo(building.x, building.y);
+            });
+
+            ctx.strokeStyle = '#ff0000'; // 设置路径颜色
+            ctx.lineWidth = 2; // 设置路径宽度
+            ctx.stroke(); // 绘制路径
+        }
+
+        // 初始化
+        window.onload = function() {
+            initSelects();
+            drawMap();
+        };
+    
+    </script>
+</body>
+</html> 
